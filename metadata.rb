@@ -4,7 +4,7 @@ maintainer_email 'you@example.com'
 license 'All Rights Reserved'
 description 'Installs/Configures elasticsearch_reference'
 long_description 'Installs/Configures elasticsearch_reference'
-version '0.1.0'
+version '0.1.12'
 chef_version '>= 12.1' if respond_to?(:chef_version)
 
 # The `issues_url` points to the location where issues for this cookbook are

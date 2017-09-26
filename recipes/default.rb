@@ -18,47 +18,39 @@ directory '/var/run/elasticsearch' do
 end
 
 es_cluster_name = node['elasticsearch']['cluster_name'] || 'elasticsearch'
-query = "chef_environment:#{node.chef_environment} AND es_cluster:#{es_cluster_name}"
+query = "chef_environment:#{node.chef_environment} AND cluster_name:#{es_cluster_name}"
 Chef::Log.warn "query: #{query}"
 cluster_members = []
 search(:node, query, filter_result: { 'fqdn' => ['fqdn'] }).each do |result|
   cluster_members << result['fqdn']
 end
+#I'm using vagrant and want the boxes to use the eht2 address to communicate
+listen_ip = node['network']['interfaces']['eth2']['addresses'].keys[1].to_s
 
 Chef::Log.warn "cluster members #{cluster_members}"
 
 elasticsearch_config = Hash.new.tap do |es_hash|
   es_hash['cluster.name'] = es_cluster_name
   es_hash['node.name'] = node['hostname']
-  es_hash['network.host'] = node['ipaddress'],
+  es_hash['network.host'] = listen_ip
   if node['aws'] && node['aws'].has_key?('region')
     es_hash['discovery.type'] = 'ec2'
     es_hash['cloud.aws.region'] = node['aws']['region']
   else
-    es_hash['discovery.zen.ping.unicast.hosts'] = cluster_members
+    es_hash['discovery.zen.ping.unicast.hosts'] = cluster_members.sort
   end
   es_hash['http.max_content_length'] = node['elasticsearch']['es_max_content_length']
 end
 
 elasticsearch_install 'elasticsearch' do
-  type 'tarball' # type of install
-  dir '/opt/' # where to install
-  download_url 'https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.5.2.tar.gz'
-  download_checksum '0870e2c0c72e6eda976effa07aa1cdd06a9500302320b5c22ed292ce21665bf1'
+  type 'package' # type of install
+  version node['elasticsearch']['version']
   action :install # could be :remove as well
 end
 
 half_system_ram = (node['memory']['total'].to_i * 0.5).floor / 1024
 
 elasticsearch_configure 'elasticsearch' do
-  # if you override one of these, you probably want to override all
-  path_home     '/opt/elasticsearch'
-  path_conf     '/etc/elasticsearch'
-  path_data     '/var/opt/elasticsearch'
-  path_logs     '/var/log/elasticsearch'
-  path_pid      '/var/run/elasticsearch'
-  path_plugins  '/opt/elasticsearch/plugins'
-  path_bin      '/opt/elasticsearch/bin'
   logging(action: 'INFO')
 
   jvm_options %w(
@@ -77,8 +69,8 @@ elasticsearch_configure 'elasticsearch' do
 end
 
 execute 'install discovery-ec2 plugin' do
-  command 'sudo /opt/elasticsearch-5.5.2/bin/elasticsearch-plugin install discovery-ec2'
-  not_if { ::Dir.exist?('/opt/elasticsearch-5.5.2/plugins/discovery-ec2') }
+  command "sudo /opt/elasticsearch-#{node['elasticsearch']['version']}/bin/elasticsearch-plugin install discovery-ec2"
+  not_if { ::Dir.exist?("/opt/elasticsearch-#{node['elasticsearch']['version']}/plugins/discovery-ec2") }
   only_if { node['aws'] }
 end
 
@@ -86,4 +78,3 @@ elasticsearch_service 'elasticsearch' do
   action :configure
 end
 
-elasticsearch_plugin 'x-pack'

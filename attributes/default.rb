@@ -6,6 +6,6 @@ default['java']['jdk']['8']['x86_64']['checksum'] = '62b215bdfb48bace523723cdbb2
 default['java']['oracle']['accept_oracle_download_terms'] = true
 
 # Elasticsearch
-default['elasticsearch']['cluster_name'] = 'myorg-cluster1'
-default['elasticsearch']['es_number_of_shards'] = 5
+default['elasticsearch']['cluster_name'] = 'automate-cluster'
 default['elasticsearch']['es_max_content_length'] = "1gb"
+default['elasticsearch']['version'] = '5.4.3'
