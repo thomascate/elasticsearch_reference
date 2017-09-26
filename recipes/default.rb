@@ -5,16 +5,33 @@
 # Copyright:: 2017, The Authors, All Rights Reserved.
 
 include_recipe 'sysctl::apply'
-
 include_recipe 'java'
-
 elasticsearch_user 'elasticsearch'
 
-directory '/var/run/elasticsearch' do
+#To enable bootstrap mlockall we need to give the elasticsearch server unlimited memlock.
+#The proper way to do this with systemd is a config file for the service and daemon-reload.
+directory '/etc/systemd/system/elasticsearch.service.d' do
+  owner 'root'
+  group 'root'
+  mode '0755'
   action :create
-  recursive true
-  owner 'elasticsearch'
-  group 'elasticsearch'
+end
+
+file '/etc/systemd/system/elasticsearch.service.d/elasticsearch.conf' do
+  action :create
+  owner 'root'
+  group 'root'
+  mode '0644'
+  content <<-EOF.gsub(/^\s+/, '')
+  [Service]
+  LimitMEMLOCK=infinity
+  EOF
+  notifies :run, 'execute[reload_systemd_config]', :immediately
+end
+
+execute 'reload_systemd_config' do
+  command 'systemctl daemon-reload'
+  action :nothing
 end
 
 es_cluster_name = node['elasticsearch']['cluster_name'] || 'elasticsearch'
@@ -30,15 +47,11 @@ listen_ip = node['network']['interfaces']['eth2']['addresses'].keys[1].to_s
 Chef::Log.warn "cluster members #{cluster_members}"
 
 elasticsearch_config = Hash.new.tap do |es_hash|
+  es_hash['bootstrap.memory_lock'] = true
   es_hash['cluster.name'] = es_cluster_name
   es_hash['node.name'] = node['hostname']
   es_hash['network.host'] = listen_ip
-  if node['aws'] && node['aws'].has_key?('region')
-    es_hash['discovery.type'] = 'ec2'
-    es_hash['cloud.aws.region'] = node['aws']['region']
-  else
-    es_hash['discovery.zen.ping.unicast.hosts'] = cluster_members.sort
-  end
+  es_hash['discovery.zen.ping.unicast.hosts'] = cluster_members.sort
   es_hash['http.max_content_length'] = node['elasticsearch']['es_max_content_length']
 end
 
@@ -47,8 +60,6 @@ elasticsearch_install 'elasticsearch' do
   version node['elasticsearch']['version']
   action :install # could be :remove as well
 end
-
-half_system_ram = (node['memory']['total'].to_i * 0.5).floor / 1024
 
 elasticsearch_configure 'elasticsearch' do
   logging(action: 'INFO')
@@ -66,12 +77,6 @@ elasticsearch_configure 'elasticsearch' do
 
   configuration elasticsearch_config
   action :manage
-end
-
-execute 'install discovery-ec2 plugin' do
-  command "sudo /opt/elasticsearch-#{node['elasticsearch']['version']}/bin/elasticsearch-plugin install discovery-ec2"
-  not_if { ::Dir.exist?("/opt/elasticsearch-#{node['elasticsearch']['version']}/plugins/discovery-ec2") }
-  only_if { node['aws'] }
 end
 
 elasticsearch_service 'elasticsearch' do
