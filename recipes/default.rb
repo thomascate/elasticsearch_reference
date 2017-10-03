@@ -49,10 +49,11 @@ Chef::Log.warn "cluster members #{cluster_members}"
 elasticsearch_config = Hash.new.tap do |es_hash|
   es_hash['bootstrap.memory_lock'] = true
   es_hash['cluster.name'] = es_cluster_name
-  es_hash['node.name'] = node['hostname']
-  es_hash['network.host'] = listen_ip
   es_hash['discovery.zen.ping.unicast.hosts'] = cluster_members.sort
   es_hash['http.max_content_length'] = node['elasticsearch']['es_max_content_length']
+  es_hash['network.host'] = listen_ip
+  es_hash['node.name'] = node['hostname']
+  es_hash['path.repo'] = "/var/backups"
 end
 
 elasticsearch_install 'elasticsearch' do
