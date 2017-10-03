@@ -64,18 +64,6 @@ end
 
 elasticsearch_configure 'elasticsearch' do
   logging(action: 'INFO')
-
-  jvm_options %w(
-              -Dlog4j2.disable.jmx=true
-              -XX:+UseParNewGC
-              -XX:+UseConcMarkSweepGC
-              -XX:CMSInitiatingOccupancyFraction=75
-              -XX:+UseCMSInitiatingOccupancyOnly
-              -XX:+HeapDumpOnOutOfMemoryError
-              -XX:+PrintGCDetails
-              -Xss512k
-  )
-
   configuration elasticsearch_config
   action :manage
 end
