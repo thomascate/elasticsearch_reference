@@ -1,10 +1,10 @@
 name 'elasticsearch_reference'
-maintainer 'The Authors'
-maintainer_email 'you@example.com'
-license 'All Rights Reserved'
+maintainer 'Thomas Cate'
+maintainer_email 'tcate@chef.io'
+license 'Apache 2.0'
 description 'Installs/Configures elasticsearch_reference'
 long_description 'Installs/Configures elasticsearch_reference'
-version '0.1.23'
+version '0.1.25'
 chef_version '>= 12.1' if respond_to?(:chef_version)
 
 # The `issues_url` points to the location where issues for this cookbook are
