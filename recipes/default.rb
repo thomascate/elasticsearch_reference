@@ -34,14 +34,16 @@ execute 'reload_systemd_config' do
   action :nothing
 end
 
+#Search for all nodes in my environment that have the same ES cluster name and push it
+#into cluster_members array
 es_cluster_name = node['elasticsearch']['cluster_name'] || 'elasticsearch'
 query = "chef_environment:#{node.chef_environment} AND cluster_name:#{es_cluster_name}"
-Chef::Log.warn "query: #{query}"
 cluster_members = []
 search(:node, query, filter_result: { 'fqdn' => ['fqdn'] }).each do |result|
   cluster_members << result['fqdn']
 end
-#I'm using vagrant and want the boxes to use the eht2 address to communicate
+
+#I'm using vagrant and want the boxes to use the eth2 address to communicate
 listen_ip = node['network']['interfaces']['eth2']['addresses'].keys[1].to_s
 
 Chef::Log.warn "cluster members #{cluster_members}"
@@ -71,4 +73,3 @@ end
 elasticsearch_service 'elasticsearch' do
   action :configure
 end
-
